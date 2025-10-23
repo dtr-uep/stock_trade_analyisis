@@ -40,20 +40,24 @@ class price_volatility():
     def __value__(self, rewards):
         return (1- self.gamma - self.gamma**2)*rewards[0] + self.gamma*rewards[1] + self.gamma**2*rewards[2] / self.c # Scale down from the currency
 
-    def fit(self, df:pd.DataFrame, var):
+    def fit(self, df:pd.DataFrame, var, verbose:bool=1):
         # Transform X
         price_whole = df['close'].iloc[self.p-1:].reset_index(drop=True)
         X_whole = make_lags(df['close'], self.p).iloc[:-self.p_var, :] if self.p_var != 0 else make_lags(df['close'], self.p) # Rerange data if use GARCH
         X_whole = X_whole.reset_index(drop=True)
         X_whole['var_pred'] = var[self.p:].reset_index(drop=True)
-        X_whole = (X_whole - X_whole.mean()) / X_whole.std()
+        self.data_mean = X_whole.mean(axis=0)
+        self.data_std = X_whole.std(axis=0)
+        X_whole = (X_whole - self.data_mean) / self.data_std
 
         if self.bs == None:
             self.bs = X_whole.shape[0]
-      
-            number_of_batch = X_whole.shape[0] // self.bs
+        
+        number_of_batch = X_whole.shape[0] // self.bs
 
-        self.final_capital = []
+        self.final_capital_list = []
+        self.cash_list = []
+        self.shares_list = []
         # Initialize policy weights
         self.W = np.zeros(shape=(X_whole.shape[1], len(self.action_list)))
 
@@ -115,6 +119,28 @@ class price_volatility():
             number_of_shares, cash, _ = self.__check_action__(number_of_shares, cash, X.shape[0]-1, taken_action, price)
             final_TC = self.__total_capital__(cash, number_of_shares, X.shape[0]-1, price) # Sum reward eqal final_TC - TC at first so compare final_TC
 
+            self.final_capital_list.append(final_TC)
+            self.cash_list.append(cash)
+            self.shares_list.append(number_of_shares)
+
             # Verbose
-            print(f"Epoch: {epoch} - Final total capital: {final_TC:.2f} - Final cash: {cash} - Final shares: {number_of_shares}")
+            if verbose:
+                print(f"Epoch: {epoch} - Final total capital: {final_TC:.2f} - Final cash: {cash} - Final shares: {number_of_shares}")
+    
+    def predict_score(self, df:pd.DataFrame, var_pred):
+        """
+        df axis 0 size should be at least size of p_price
+        var_pred is only a scalar
+        """
+        price = df['close'].copy()
+        price.loc[price.shape[0]] = 0
+        X_whole = make_lags(price, self.p).iloc[-1:].reset_index(drop=True) # Rerange data if use GARCH
+        X_whole = X_whole.reset_index(drop=True)
+        X_whole['var_pred'] = var_pred
+        X_whole = (X_whole - self.data_mean) / self.data_std
+
+        return X_whole @ self.W
+    
+    def predict_action(self, df:pd.DataFrame, var_pred):
+        return self.action_list[np.argmax(self.predict_score(df, var_pred))]
 
