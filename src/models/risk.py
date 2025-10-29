@@ -64,7 +64,7 @@ class ARCH_MD():
         X['cnst'] = 1
 
         shock_df_val = make_shocks(returns, self.mean)**2 
-        X_val = make_lags(shock_df, self.q) if not self.log == 'log' else np.log(make_lags(shock_df_val + 1e-12, self.q))
+        X_val = make_lags(shock_df_valval, self.q) if not self.log == 'log' else np.log(make_lags(shock_df_val + 1e-12, self.q))
         X_val['cnst'] = 1
         
         # Realize variance
