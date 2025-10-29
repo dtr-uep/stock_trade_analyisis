@@ -177,37 +177,7 @@ class GARCH_MD():
         self.alphas['cnst'] = max(self.alphas['cnst'], 1e-5)
         self.alphas = self.alphas.clip(lower=0)
 
-        self.betas -= self.lr * gradient_betas * 0.001
-        self.betas = np.clip(self.betas, a_min=0, a_max=None)
-        
-    def fit(self, returns:pd.Series, validation:pd.Series=None, mean:pd.Series=None, verbose:bool=0, stopstep:int=None, var_list:list=None, val_var_list:list=None):
-        current_min_loss = None
-        current_step = stopstep
-        if not var_list:
-            self.var = returns.std()**2
-            var_list_original = [self.var] * self.p
-        else:
-            var_list_original = var_list
-        self.train_loss = []
-        self.val_loss = []
-        
-        if not val_var_list:
-            val_var_list_original = var_list_original
-        else:
-            val_var_list_original = val_var_list
-
-        if not mean:
-            mean = returns.mean()
-        
-        var_list = var_list_original.copy()
-        val_var_list = val_var_list_original.copy()
-
-        # Transform input
-        shock_df = make_shocks(returns, mean)**2
-        X_first_part = make_lags(shock_df, self.q)
-        X_first_part['cnst'] = 1
-
-        shock_df_val = make_shocks(returns, mean)**2
+        self.betas -= self.lr *validation, mean)**2
         X_val = make_lags(shock_df_val, self.q)
         X_val['cnst'] = 1
 
