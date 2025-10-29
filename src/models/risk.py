@@ -44,8 +44,8 @@ class ARCH_MD():
             self.alphas = self.alphas.clip(lower=0)       
         
         else:
-            # Gradient descent
-            gradident = (X.T @ (-RV / varhat + 1))
+            multi = X * np.asarray(varhat).reshape(-1,1)
+            gradident = (multi.T @ numerator) / varhat.shape[0]
             self.alphas -= self.lr * gradident # Alphas dont have to be positive
 
     def fit(self, returns:pd.Series, validation:pd.Series=None, mean:pd.Series=None, verbose:bool=0, stopstep:int=None):
